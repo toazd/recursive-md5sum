@@ -1,0 +1,26 @@
+################################################################################
+#                                                                              #
+# Toazd 2020 Unlicense                                                         #
+# Read the file UNLICENSE or refer to <https://unlicense.org> for more details #
+#                                                                              #
+# Purpose:                                                                     #
+#   Given a search path (required), a save path (optional), and a file         #
+#   extension (optional) locate all files in the search path and run md5sum    #
+#   on each one and save the results in a single file.                         #
+#                                                                              #
+#   Optional parameters preceding explicitly defined parameters are required.  #
+#   For example, if you want to explicitly define the file extension search    #
+#   pattern, then the save path optional parameter must also be explicitly     #
+#   defined.                                                                   #
+#                                                                              #
+#   If the minimum amount of parameters is supplied then defaults are assumed  #
+#   for the remaining optional parameters.                                     #
+#    ./script.sh /home                                                         #
+#   is the same as explicitly typing                                           #
+#    ./script.sh /home "**"                                                    #
+#                                                                              #
+#    When the file extension parameter is not supplied or it is explicitly     #
+#    defined as "**" then all files will be located instead of by the pattern  #
+#    *.file_extension.                                                         #
+#                                                                              #
+################################################################################
