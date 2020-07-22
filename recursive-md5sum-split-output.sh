@@ -103,9 +103,9 @@ sSAVE_PATH="$(realpath -q "$sSAVE_PATH")"
 # This will also fail if the save path does not exist
 [[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit; }
 
-# Find all files in the search path and assign the results to an indexed array after sorting them
+# Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
-# iaFILES is not required but is used for clarity (if no array is supplied MAPFILE is used)
+# iaFILES is not strictly required but is used for clarity (if no array is supplied MAPFILE is used, see bash manual)
 echo "Search path: $sSEARCH_PATH"
 if [[ $sFILE_EXT = "**" ]]; then
     iSTART_SECONDS="$(date +%s)"
@@ -128,6 +128,7 @@ elif [[ ${#iaFILES[@]} -gt 1 ]]; then
     echo "${#iaFILES[@]} files found and sorted in $(FormatTimeDiff)"
     # Set the total files variable used for progress output
     # NOTE A seperate value is not required but may cost less computationally
+    # versus computing it for each iteration of the main loop
     iTOTAL_FILES=${#iaFILES[@]}
 else
     # Unknown error
@@ -135,7 +136,11 @@ else
     exit 1
 fi
 
-# Process each file defined as an element in the iaFILES array
+# Process each file defined as an element in the iaFILES array with md5sum,
+# redirecting the output to a file in the save path named parentpath_path_TAG.md5
+# (relative to the file), and then report the progress to stdout
+# NOTE save and restore cursor position escape sequences are used (not all terminals
+# support this feature and if lacking support the output will be mangled)
 printf "%s\033[s" "Processing files with md5sum..."
 iSTART_SECONDS="$(date +%s)"
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
@@ -150,13 +155,16 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT##*/}"
 
     # Concatenate the save path, save path parent, basename path,
-    # and the optional tag to form the full path and file name to output to
+    # and the optional tag to form the full path and file name to redirect output to
     if [[ -z $sTAG ]]; then
         # If no tag parameter is explicitly defined or it is set to NULL
         sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
     elif [[ -n $sTAG ]]; then
         # If a tag parameter is explicitly defined, prefix the tag with an underscore "_"
         sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}_${sTAG}.md5"
+    else
+        # If something went wrong with obtaining a tag, default to no TAG
+        sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
     fi
 
     # Run md5sum on the current file in the array and redirect the output to the save file
