@@ -69,7 +69,7 @@ ShowUsage() {
     printf "Usage:\n\t%s\n\n\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n" \
            "$0 [search_path] [save_path] [file_extension] [tag]" \
            "Only the first parameter is required. Set file_extension to \"**\" to search all files." \
-           "The current defaults if you run the script in this path with only one parameter are:" \
+           "Given one parameter in the current path the remaining defaults would be assumed:" \
            "save_path=\"$sSAVE_PATH\"" \
            "file_extension=\"$sFILE_EXT\"" \
            "tag=\"$sTAG\""
