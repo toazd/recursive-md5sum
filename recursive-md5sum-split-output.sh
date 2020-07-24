@@ -50,12 +50,13 @@ shopt -qs extglob
 
 # Initialize global variables
 sSEARCH_PATH="${1-}"
-sSAVE_PATH="${2:-"$(pwd -P)"}"
+sSAVE_PATH="${2:-"$PWD"}"
 sFILE_EXT="${3:-"**"}"
 sTAG="${4:-""}"
 sBASENAME_PATH=""
 sSAVE_FILE=""
 sSAVE_PATH_PARENT=""
+sWORK_PATH=$PWD # save the original work path in case $OLDPWD isn't supported or set correctly
 iaFILES=()
 iSTART_SECONDS=0
 iEND_SECONDS=0
@@ -96,29 +97,47 @@ FormatTimeDiff() {
 # If files are supplied when paths are expected
 [[ -f $sSAVE_PATH || -f $sSEARCH_PATH ]] && ShowUsage
 
-# Get the full, real path of the search path
-# -e allows for relative paths during invocation
-sSEARCH_PATH=$(readlink -e "$sSEARCH_PATH")
-
-# Get the full, real path of the save path
-# -e allows for relative paths during invocation
-sSAVE_PATH=$(readlink -e "$sSAVE_PATH")
-
 # Check for write permission to the save path
 # This will also fail if the save path does not exist
 [[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit; }
 
+# support relative paths during invocation without using readlink -e or realpath
+# as a side effect, also eliminates issues with needing a trailing forward slash for the find path
+# so there is no need to use parameter expansion to check for it and fix it seperately
+# pwd -P could work too but I'm not sure of OSX supports pwd -P by default
+if cd "$sSEARCH_PATH"; then
+    sSEARCH_PATH=$PWD
+    if cd "$sWORK_PATH"; then
+        if cd "$sSAVE_PATH"; then
+            sSAVE_PATH=$PWD
+            if ! cd "$sWORK_PATH"; then
+                echo "Error returning to original work path: $sWORK_PATH"
+                exit 1
+            fi
+        else
+            echo "Error changing to save path: $sSAVE_PATH"
+            exit 1
+        fi
+    else
+        echo "Error returning to original work path: $sWORK_PATH"
+        exit 1
+    fi
+else
+    echo "Error changing to search path: $sSEARCH_PATH"
+    exit 1
+fi
+
 # Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
 # iaFILES is not strictly required but is used for clarity (if no array is supplied MAPFILE is used, see bash manual)
-echo "Search path: $sSEARCH_PATH"
+#echo "Search path: \"$sSEARCH_PATH\""
 if [[ $sFILE_EXT = "**" ]]; then
     iSTART_SECONDS="$(date +%s)"
-    mapfile -t <<< "$(find "$sSEARCH_PATH" -type f -iwholename "*" | LC_ALL=C sort -u)" iaFILES
+    mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)" iaFILES
     iEND_SECONDS="$(date +%s)"
 else
     iSTART_SECONDS="$(date +%s)"
-    mapfile -t <<< "$(find "$sSEARCH_PATH" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)" iaFILES
+    mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)" iaFILES
     iEND_SECONDS="$(date +%s)"
 fi
 
