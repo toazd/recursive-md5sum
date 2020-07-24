@@ -133,11 +133,17 @@ fi
 #echo "Search path: \"$sSEARCH_PATH\""
 if [[ $sFILE_EXT = "**" ]]; then
     iSTART_SECONDS="$(date +%s)"
-    mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)" iaFILES
+    #mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)" iaFILES
+    while IFS= read -r; do
+        iaFILES+=("$REPLY")
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
 else
     iSTART_SECONDS="$(date +%s)"
-    mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)" iaFILES
+    #mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)" iaFILES
+    while IFS= read -r; do
+        iaFILES+=("$REPLY")
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
 fi
 
