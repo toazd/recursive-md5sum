@@ -46,7 +46,7 @@ shopt -qs extglob
 # -e  Exit immediately if a command exits with a non-zero status.
 # -E  If set, the ERR trap is inherited by shell functions.
 # -u  Treat unset variables as an error when substituting.
-set -eEu
+#set -eEu
 
 # Initialize global variables
 sSEARCH_PATH="${1-}"
@@ -97,7 +97,12 @@ FormatTimeDiff() {
 [[ -f $sSAVE_PATH || -f $sSEARCH_PATH ]] && ShowUsage
 
 # Get the full, real path of the search path
-sSAVE_PATH="$(readlink "$sSAVE_PATH")"
+# -e allows for relative paths during invocation
+sSEARCH_PATH=$(readlink -e "$sSEARCH_PATH")
+
+# Get the full, real path of the save path
+# -e allows for relative paths during invocation
+sSAVE_PATH=$(readlink -e "$sSAVE_PATH")
 
 # Check for write permission to the save path
 # This will also fail if the save path does not exist
@@ -122,7 +127,7 @@ fi
 # If the array has length 0 then it hasn't been modified from initialization
 # (shouldn't happen but if set -e is removed or disabled and find fails somehow, it can happen)
 if [[ ${#iaFILES[@]} -le 1 ]]; then
-    echo "No files found"
+    echo "No files found matching that search pattern"
     exit 1
 elif [[ ${#iaFILES[@]} -gt 1 ]]; then
     echo "${#iaFILES[@]} files found and sorted in $(FormatTimeDiff)"
