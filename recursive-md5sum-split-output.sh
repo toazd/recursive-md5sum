@@ -7,7 +7,12 @@
 # Purpose:                                                                     #
 #   Given a search path (required), a save path (optional), a file extension   #
 #   (optional), and a tag (optional) locate all files in the search path and   #
-#   run md5sum on each one and save the results into seperate files.           #
+#   run md5sum on each one and save the results into seperate files. Each      #
+#   output file name is determined by the pattern (relative to the file):      #
+#     parentpathbasename_dirnamebasename.md5                                   #
+#      and if an optional TAG is included:                                     #
+#     parentpathbasename_dirnamebasename_TAG.md5                               #
+#      (command names used for illustration only)                              #
 #                                                                              #
 #   Optional parameters preceding explicitly defined parameters are required.  #
 #   For example, if you want to explicitly define the tag, then the save path  #
