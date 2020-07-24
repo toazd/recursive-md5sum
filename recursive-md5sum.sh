@@ -46,7 +46,7 @@ shopt -qs extglob
 # -e  Exit immediately if a command exits with a non-zero status.
 # -E  If set, the ERR trap is inherited by shell functions.
 # -u  Treat unset variables as an error when substituting.
-set -eEu
+#set -eEu
 
 # Initialize global variables
 sSEARCH_PATH="${1-}"
@@ -87,8 +87,13 @@ FormatTimeDiff() {
 # If files are supplied when paths are expected
 [[ -f $sSAVE_PATH || -f $sSEARCH_PATH ]] && ShowUsage
 
-# Get the full, real path of the save path without a trailing /
-sSAVE_PATH="$(readlink "$sSAVE_PATH")"
+# Get the full, real path of the search path
+# -e allows for relative paths during invocation
+sSEARCH_PATH=$(readlink -e "$sSEARCH_PATH")
+
+# Get the full, real path of the save path
+# -e allows for relative paths during invocation
+sSAVE_PATH=$(readlink -e "$sSAVE_PATH")
 
 # Check for write permission to the save path
 # This will also fail if the save path does not exist
