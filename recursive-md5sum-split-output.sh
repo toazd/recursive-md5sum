@@ -39,9 +39,9 @@ shopt -qs extglob
 #   If set, Bash changes its behavior to that of version 3.2 with respect to locale-specific string comparison
 #   when using the [[ conditional command’s ‘<’ and ‘>’ operators (see previous item) and the effect of interrupting
 #   a command list. Bash versions 3.2 and earlier continue with the next command in the list after one terminates due to an interrupt.
-if ! shopt -qs compat32; then
-    shopt -qs compat31
-fi
+#if ! shopt -qs compat32; then
+#    shopt -qs compat31
+#fi
 
 # -e  Exit immediately if a command exits with a non-zero status.
 # -E  If set, the ERR trap is inherited by shell functions.
@@ -97,7 +97,7 @@ FormatTimeDiff() {
 [[ -f $sSAVE_PATH || -f $sSEARCH_PATH ]] && ShowUsage
 
 # Get the full, real path of the search path
-sSAVE_PATH="$(realpath -q "$sSAVE_PATH")"
+sSAVE_PATH="$(readlink "$sSAVE_PATH")"
 
 # Check for write permission to the save path
 # This will also fail if the save path does not exist
