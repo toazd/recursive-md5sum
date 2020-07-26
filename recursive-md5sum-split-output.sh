@@ -3,6 +3,8 @@
 #                                                                              #
 # Toazd 2020 Unlicense                                                         #
 # Read the file UNLICENSE or refer to <https://unlicense.org> for more details #
+# Designed to work on bash versions as low as 3.2                              #
+#   without using gnu coreutils                                                #
 #                                                                              #
 # Purpose:                                                                     #
 #   Given a search path (required), a save path (optional), a file extension   #
@@ -14,10 +16,12 @@
 #     parentpathbasename_dirnamebasename_TAG.md5                               #
 #      (command names used for illustration only)                              #
 #                                                                              #
+# Usage notes:                                                                 #
+#                                                                              #
 #   Optional parameters preceding explicitly defined parameters are required.  #
 #   For example, if you want to explicitly define the tag, then the save path  #
 #   and file extension search pattern optional parameters must also be         #
-#   explicitly defined.                                                        #
+#   provided.                                                        #
 #                                                                              #
 #   If the minimum amount of parameters is supplied then defaults are assumed  #
 #   for the remaining optional parameters.                                     #
@@ -34,34 +38,15 @@
 # Shell options
 shopt -qs extglob
 
-# Attempt to set bash compatibility mode to < 4.0
-# shopt compat31
-#   If set, Bash changes its behavior to that of version 3.1 with respect to quoted arguments to the conditional
-#   command’s ‘=~’ operator and with respect to locale-specific string comparison when using the [[ conditional
-#   command’s ‘<’ and ‘>’ operators. Bash versions prior to bash-4.1 use ASCII collation and strcmp(3); bash-4.1
-#   and later use the current locale’s collation sequence and strcoll(3).
-# shopt compat32
-#   If set, Bash changes its behavior to that of version 3.2 with respect to locale-specific string comparison
-#   when using the [[ conditional command’s ‘<’ and ‘>’ operators (see previous item) and the effect of interrupting
-#   a command list. Bash versions 3.2 and earlier continue with the next command in the list after one terminates due to an interrupt.
-#if ! shopt -qs compat32; then
-#    shopt -qs compat31
-#fi
-
-# -e  Exit immediately if a command exits with a non-zero status.
-# -E  If set, the ERR trap is inherited by shell functions.
-# -u  Treat unset variables as an error when substituting.
-#set -eEu
-
 # Initialize global variables
-sSEARCH_PATH="${1-}"
-sSAVE_PATH="${2:-"$PWD"}"
-sFILE_EXT="${3:-"**"}"
-sTAG="${4:-""}"
+sSEARCH_PATH=${1-}
+sSAVE_PATH=${2:-$PWD}
+sFILE_EXT=${3:-"**"}
+sTAG=${4-""}
 sBASENAME_PATH=""
 sSAVE_FILE=""
 sSAVE_PATH_PARENT=""
-sWORK_PATH=$PWD # save the original work path in case $OLDPWD isn't supported or set correctly
+sWORK_PATH=$PWD # save the script work path in case $OLDPWD isn't supported or set correctly
 iaFILES=()
 iSTART_SECONDS=0
 iEND_SECONDS=0
@@ -70,7 +55,7 @@ iTOTAL_FILES=0
 iPROGRESS=0
 iPREV_PROGRESS=1
 
-# Basic usage
+# Basic usage help
 ShowUsage() {
     printf "Usage:\n\t%s\n\n\t%s\n\t%s\n\t%s\n\t%s\n\t%s\n" \
            "$0 [search_path] [save_path] [file_extension] [tag]" \
@@ -106,17 +91,15 @@ FormatTimeDiff() {
 # This will also fail if the save path does not exist
 [[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit; }
 
-# support relative paths during invocation without using readlink -e or realpath
-# as a side effect, also eliminates issues with needing a trailing forward slash for the find path
-# so there is no need to use parameter expansion to check for it and fix it seperately
-# pwd -P could work too but I'm not sure of OSX supports pwd -P by default
+# Get the full path to search path and save path
+# supports relative paths during invocation
 if cd "$sSEARCH_PATH"; then
     sSEARCH_PATH=$PWD
     if cd "$sWORK_PATH"; then
         if cd "$sSAVE_PATH"; then
             sSAVE_PATH=$PWD
             if ! cd "$sWORK_PATH"; then
-                echo "Error returning to original work path: $sWORK_PATH"
+                echo "Error returning to script work path: $sWORK_PATH"
                 exit 1
             fi
         else
@@ -124,7 +107,7 @@ if cd "$sSEARCH_PATH"; then
             exit 1
         fi
     else
-        echo "Error returning to original work path: $sWORK_PATH"
+        echo "Error returning to script work path: $sWORK_PATH"
         exit 1
     fi
 else
@@ -134,18 +117,14 @@ fi
 
 # Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
-# iaFILES is not strictly required but is used for clarity (if no array is supplied MAPFILE is used, see bash manual)
-#echo "Search path: \"$sSEARCH_PATH\""
 if [[ $sFILE_EXT = "**" ]]; then
     iSTART_SECONDS="$(date +%s)"
-    #mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)" iaFILES
     while IFS= read -r; do
         iaFILES+=("$REPLY")
     done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
 else
     iSTART_SECONDS="$(date +%s)"
-    #mapfile -t <<< "$(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)" iaFILES
     while IFS= read -r; do
         iaFILES+=("$REPLY")
     done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)
@@ -158,7 +137,7 @@ fi
 # (shouldn't happen but if set -e is removed or disabled and find fails somehow, it can happen)
 if [[ ${#iaFILES[@]} -le 1 ]]; then
     echo "No files found matching that search pattern"
-    exit 1
+    exit 0
 elif [[ ${#iaFILES[@]} -gt 1 ]]; then
     echo "${#iaFILES[@]} files found and sorted in $(FormatTimeDiff)"
     # Set the total files variable used for progress output

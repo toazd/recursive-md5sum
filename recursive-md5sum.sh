@@ -3,11 +3,13 @@
 #                                                                              #
 # Toazd 2020 Unlicense                                                         #
 # Read the file UNLICENSE or refer to <https://unlicense.org> for more details #
+# Designed to work on bash versions as low as 3.2                              #
+#   without using gnu coreutils                                                #
 #                                                                              #
 # Purpose:                                                                     #
 #   Given a search path (required), a save path (optional), and a file         #
 #   extension (optional) locate all files in the search path and run md5sum    #
-#   on each one and save the results in a single file.                         #
+#   on each one and save the results to a single file.                         #
 #                                                                              #
 #   Optional parameters preceding explicitly defined parameters are required.  #
 #   For example, if you want to explicitly define the file extension search    #
@@ -29,30 +31,13 @@
 # Shell options
 shopt -qs extglob
 
-# Attempt to set bash compatibility mode to < 4.0
-# shopt compat31
-#   If set, Bash changes its behavior to that of version 3.1 with respect to quoted arguments to the conditional
-#   command’s ‘=~’ operator and with respect to locale-specific string comparison when using the [[ conditional
-#   command’s ‘<’ and ‘>’ operators. Bash versions prior to bash-4.1 use ASCII collation and strcmp(3); bash-4.1
-#   and later use the current locale’s collation sequence and strcoll(3).
-# shopt compat32
-#   If set, Bash changes its behavior to that of version 3.2 with respect to locale-specific string comparison
-#   when using the [[ conditional command’s ‘<’ and ‘>’ operators (see previous item) and the effect of interrupting
-#   a command list. Bash versions 3.2 and earlier continue with the next command in the list after one terminates due to an interrupt.
-#if ! shopt -qs compat32; then
-#    shopt -qs compat31
-#fi
-
-# -e  Exit immediately if a command exits with a non-zero status.
-# -E  If set, the ERR trap is inherited by shell functions.
-# -u  Treat unset variables as an error when substituting.
-#set -eEu
 
 # Initialize global variables
-sSEARCH_PATH="${1-}"
-sSAVE_PATH="${2:-"$(pwd -P)"}"
-sFILE_EXT="${3:-"**"}"
+sSEARCH_PATH=${1-}
+sSAVE_PATH=${2:-$PWD}
+sFILE_EXT=${3:-"**"}
 sSAVE_FILE=""
+sWORK_PATH=$PWD # save the script work path in case $OLDPWD isn't supported or set correctly
 iaFILES=()
 iSTART_SECONDS=0
 iEND_SECONDS=0
@@ -87,13 +72,29 @@ FormatTimeDiff() {
 # If files are supplied when paths are expected
 [[ -f $sSAVE_PATH || -f $sSEARCH_PATH ]] && ShowUsage
 
-# Get the full, real path of the search path
-# -e allows for relative paths during invocation
-sSEARCH_PATH=$(readlink -e "$sSEARCH_PATH")
-
-# Get the full, real path of the save path
-# -e allows for relative paths during invocation
-sSAVE_PATH=$(readlink -e "$sSAVE_PATH")
+# Get the full path to search path and save path
+# supports relative paths during invocation
+if cd "$sSEARCH_PATH"; then
+    sSEARCH_PATH=$PWD
+    if cd "$sWORK_PATH"; then
+        if cd "$sSAVE_PATH"; then
+            sSAVE_PATH=$PWD
+            if ! cd "$sWORK_PATH"; then
+                echo "Error returning to script work path: $sWORK_PATH"
+                exit 1
+            fi
+        else
+            echo "Error changing to save path: $sSAVE_PATH"
+            exit 1
+        fi
+    else
+        echo "Error returning to script work path: $sWORK_PATH"
+        exit 1
+    fi
+else
+    echo "Error changing to search path: $sSEARCH_PATH"
+    exit 1
+fi
 
 # Check for write permission to the save path
 # This will also fail if the save path does not exist
@@ -102,14 +103,19 @@ sSAVE_PATH=$(readlink -e "$sSAVE_PATH")
 # Find all files in the search path and assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
 # iaFILES is not required but is used for clarity (if no array is supplied MAPFILE is used)
-echo "Search path: $sSEARCH_PATH"
+# Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
+# Each method is timed in whole seconds
 if [[ $sFILE_EXT = "**" ]]; then
     iSTART_SECONDS="$(date +%s)"
-    mapfile -t <<< "$(find "$sSEARCH_PATH" -type f -iwholename "*" | LC_ALL=C sort -u)" iaFILES
+    while IFS= read -r; do
+        iaFILES+=("$REPLY")
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
 else
     iSTART_SECONDS="$(date +%s)"
-    mapfile -t <<< "$(find "$sSEARCH_PATH" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)" iaFILES
+    while IFS= read -r; do
+        iaFILES+=("$REPLY")
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
 fi
 
@@ -118,7 +124,7 @@ fi
 # If the array has length 0 then it hasn't been modified from initialization
 # (shouldn't happen but if set -e is removed or disabled and find fails somehow, it can happen)
 if [[ ${#iaFILES[@]} -le 1 ]]; then
-    echo "No files found"
+    echo "No files found matching that search pattern"
     exit
 elif [[ ${#iaFILES[@]} -gt 1 ]]; then
     echo "${#iaFILES[@]} files found and sorted in $(FormatTimeDiff)"
@@ -138,12 +144,12 @@ fi
 # TODO better save file naming scheme
 
 # Get the full, real path of the search path
-sSAVE_FILE="$(realpath -q "$sSEARCH_PATH")"
+sSAVE_FILE=$sSEARCH_PATH
 
 # Replace / with -
 sSAVE_FILE="${sSAVE_FILE//\//-}"
 
-# Remove the leading -
+# Remove a leading dash "-" if it exists
 [[ ${sSAVE_FILE:0:1} = "-" ]] && sSAVE_FILE="${sSAVE_FILE:1:${#sSAVE_FILE}}"
 
 # Prefix the file name with the path
