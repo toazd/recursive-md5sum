@@ -190,6 +190,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
+    # NOTE POSIX defines [[:blank:]] as "Space and tab"
     sMD5_OUTPUT_LINE_CHECKSUM="${sMD5_OUTPUT_LINE%%[[:blank:]]*}"
 
     # Get the full path and/or file name from the output line
@@ -218,6 +219,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
         sMD5_OUTPUT_LINE="${sMD5_OUTPUT_LINE_CHECKSUM} *${sMD5_OUTPUT_LINE_FILE}"
     fi
 
+    # Save the output line to the save file
     printf "%s\n" "$sMD5_OUTPUT_LINE" >> "$sSAVE_FILE"
 
     # Calculate the progress in whole-number % using no external commands
