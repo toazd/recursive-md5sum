@@ -47,6 +47,7 @@ sBASENAME_PATH=""
 sSAVE_FILE=""
 sSAVE_PATH_PARENT=""
 sWORK_PATH=$PWD # save the script work path in case $OLDPWD isn't supported or set correctly
+sMD5_OUTPUT_LINE=""
 iaFILES=()
 iSTART_SECONDS=0
 iEND_SECONDS=0
@@ -54,6 +55,7 @@ iCOUNTER=0
 iTOTAL_FILES=0
 iPROGRESS=0
 iPREV_PROGRESS=1
+iMD5SUM_BINARY_MODE=0
 
 # Basic usage help
 ShowUsage() {
@@ -117,6 +119,7 @@ fi
 
 # Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
+# NOTE files are sorted using the entire path and name
 if [[ $sFILE_EXT = "**" ]]; then
     iSTART_SECONDS="$(date +%s)"
     while IFS= read -r; do
@@ -181,8 +184,39 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
         sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
     fi
 
-    # Run md5sum on the current file in the array and redirect the output to the save file
-    md5sum "${iaFILES[iCOUNTER]}" >> "$sSAVE_FILE"
+    # Get the output line from md5sum
+    sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
+
+    # Get the checksum portion of the output line
+    sMD5_OUTPUT_LINE_CHECKSUM="${sMD5_OUTPUT_LINE%%[[:blank:]]*}"
+
+    # Get the full path and/or file name from the output line
+    sMD5_OUTPUT_LINE_FILE="${sMD5_OUTPUT_LINE##*[[:blank:]]}"
+
+    # Determine if md5sum was ran in text or binary mode (determines the output format)
+    # by checking for a leading asterisk "*" (binary mode). Since blanks were removed in
+    # the previous step, if there is no asterisk then the mode is text mode
+    # NOTE just like md5sum, the default is text mode
+    if [[ ${sMD5_OUTPUT_LINE_FILE:0:1} = "*" ]]; then
+        iMD5SUM_BINARY_MODE=1
+    else
+        iMD5SUM_BINARY_MODE=0
+    fi
+
+    # Remove the entire path from the file name
+    # NOTE if md5sum happens to run in binary mode, this also removes the leading *
+    sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE##*/}
+
+    # Reformat the output line according to the mode, reusing the existing variable
+    # NOTE text mode - fields seperated by a space " ", with the file having a leading space " "
+    # NOTE binary mode - fields seperated by a space " ", with the file having a leading asterisk "*"
+    if [[ $iMD5SUM_BINARY_MODE = "0" ]]; then
+        sMD5_OUTPUT_LINE="${sMD5_OUTPUT_LINE_CHECKSUM}  ${sMD5_OUTPUT_LINE_FILE}"
+    elif [[ $iMD5SUM_BINARY_MODE = "1" ]]; then
+        sMD5_OUTPUT_LINE="${sMD5_OUTPUT_LINE_CHECKSUM} *${sMD5_OUTPUT_LINE_FILE}"
+    fi
+
+    echo "$sMD5_OUTPUT_LINE" >> "$sSAVE_FILE"
 
     # Calculate the progress in whole-number % using no external commands
     # NOTE Calling external commands (like bc) during the main loop is too costly for long operations
