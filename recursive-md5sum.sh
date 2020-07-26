@@ -143,15 +143,12 @@ fi
 # eg. "/home/toazd/github" becomes "save_path/home-toazd-github.md5"
 # TODO better save file naming scheme
 
-# Get the full, real path of the search path
+# Start with the full path of the search path
 sSAVE_FILE=$sSEARCH_PATH
-
 # Replace / with -
 sSAVE_FILE="${sSAVE_FILE//\//-}"
-
 # Remove a leading dash "-" if it exists
 [[ ${sSAVE_FILE:0:1} = "-" ]] && sSAVE_FILE="${sSAVE_FILE:1:${#sSAVE_FILE}}"
-
 # Prefix the file name with the path
 sSAVE_FILE="${sSAVE_PATH}/${sSAVE_FILE}.md5"
 

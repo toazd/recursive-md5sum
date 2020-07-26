@@ -3,8 +3,7 @@
 #                                                                              #
 # Toazd 2020 Unlicense                                                         #
 # Read the file UNLICENSE or refer to <https://unlicense.org> for more details #
-# Designed to work on bash versions as low as 3.2                              #
-#   without using gnu coreutils                                                #
+# Designed to work on bash versions as low as 3.2 without using gnu coreutils  #
 #                                                                              #
 # Purpose:                                                                     #
 #   Given a search path (required), a save path (optional), a file extension   #
@@ -15,8 +14,13 @@
 #      and if an optional TAG is included:                                     #
 #     parentpathbasename_dirnamebasename_TAG.md5                               #
 #      (command names used for illustration only)                              #
+#   The file names in the output files have their paths stripped               #
 #                                                                              #
 # Usage notes:                                                                 #
+#                                                                              #
+#   Both md5sum read modes are supported which is currently text and binary    #
+#   To change the md5sum mode from the default (text) or add any other         #
+#   parameters change them on ~line 209 (not all parameters are supported)     #
 #                                                                              #
 #   Optional parameters preceding explicitly defined parameters are required.  #
 #   For example, if you want to explicitly define the tag, then the save path  #
@@ -202,6 +206,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     fi
 
     # Get the output line from md5sum
+    # NOTE add md5sum parameters here
     sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
