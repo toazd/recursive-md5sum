@@ -227,7 +227,8 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # NOTE if md5sum happens to run in binary mode, this also removes the leading * or space
     sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE##*/}
 
-    # Reformat the output line according to the mode, reusing the existing variable
+    # Reformat the output line according to the mode, reusing an existing variable, using
+    # the checksum and reformatted file name
     # NOTE text mode - fields seperated by a space " ", with the file having a leading space " "
     # NOTE binary mode - fields seperated by a space " ", with the file having a leading asterisk "*"
     if [[ $iMD5SUM_BINARY_MODE = "0" ]]; then
