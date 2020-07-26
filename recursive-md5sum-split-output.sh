@@ -176,6 +176,8 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
     # Concatenate the save path, save path parent, basename path,
     # and the optional tag to form the full path and file name to redirect output to
+    # If sSAVE_PATH_PARENT is not NULL include it with an underscore "_" as a seperator
+    # If sSAVE_PATH_PARENT is NULL it doesn't exist, so don't include it or a leading underscore "_"
     if [[ -z $sTAG ]]; then
         # If no tag parameter is explicitly defined or it is set to NULL
         if [[ -n $sSAVE_PATH_PARENT ]]; then
@@ -214,9 +216,11 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # NOTE just like md5sum, the default is text mode
     if [[ ${sMD5_OUTPUT_LINE_FILE:0:1} = "*" ]]; then
         iMD5SUM_BINARY_MODE=1
+        # Remove the leading asterisk "*"
         sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE:2:${#sMD5_OUTPUT_LINE_FILE}}
     elif [[ ${sMD5_OUTPUT_LINE_FILE:0:1} = " " ]]; then
         iMD5SUM_BINARY_MODE=0
+        # Remove the leading space " "
         sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE:2:${#sMD5_OUTPUT_LINE_FILE}}
     else
         echo "Error checking md5sum output line file name for a mode character (* or " ")"
