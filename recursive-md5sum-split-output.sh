@@ -187,27 +187,31 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     fi
 
     # Get the output line from md5sum
-    sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
+    sMD5_OUTPUT_LINE=$(md5sum -b "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
     # NOTE POSIX defines [[:blank:]] as "Space and tab"
     sMD5_OUTPUT_LINE_CHECKSUM="${sMD5_OUTPUT_LINE%%[[:blank:]]*}"
 
     # Get the full path and/or file name from the output line
-    sMD5_OUTPUT_LINE_FILE="${sMD5_OUTPUT_LINE##*[[:blank:]]}"
+    sMD5_OUTPUT_LINE_FILE="${sMD5_OUTPUT_LINE#*[[:blank:]]}"
 
     # Determine if md5sum was ran in text or binary mode (determines the output format)
-    # by checking for a leading asterisk "*" (binary mode). Since blanks were removed in
-    # the previous step, if there is no asterisk then the mode is text mode
+    # by checking for a leading asterisk "*" (binary mode) or space " " (text mode)
     # NOTE just like md5sum, the default is text mode
     if [[ ${sMD5_OUTPUT_LINE_FILE:0:1} = "*" ]]; then
         iMD5SUM_BINARY_MODE=1
-    else
+        sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE:2:${#sMD5_OUTPUT_LINE_FILE}}
+    elif [[ ${sMD5_OUTPUT_LINE_FILE:0:1} = " " ]]; then
         iMD5SUM_BINARY_MODE=0
+        sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE:2:${#sMD5_OUTPUT_LINE_FILE}}
+    else
+        echo "Error checking md5sum output line file name for a mode character (* or " ")"
+        echo "Output line: \"$sMD5_OUTPUT_LINE_FILE\""
     fi
 
     # Remove the entire path from the file name
-    # NOTE if md5sum happens to run in binary mode, this also removes the leading *
+    # NOTE if md5sum happens to run in binary mode, this also removes the leading * or space
     sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE##*/}
 
     # Reformat the output line according to the mode, reusing the existing variable
