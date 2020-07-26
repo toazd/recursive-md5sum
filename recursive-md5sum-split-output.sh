@@ -218,7 +218,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
         sMD5_OUTPUT_LINE="${sMD5_OUTPUT_LINE_CHECKSUM} *${sMD5_OUTPUT_LINE_FILE}"
     fi
 
-    echo "$sMD5_OUTPUT_LINE" >> "$sSAVE_FILE"
+    printf "%s\n" "$sMD5_OUTPUT_LINE" >> "$sSAVE_FILE"
 
     # Calculate the progress in whole-number % using no external commands
     # NOTE Calling external commands (like bc) during the main loop is too costly for long operations
