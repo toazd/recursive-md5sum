@@ -170,13 +170,9 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
     # Get the basename of the parent of the folder the file is in
     sSAVE_PATH_PARENT="${iaFILES[iCOUNTER]%/*}"
-    #echo "savepathparent 1: \"$sSAVE_PATH_PARENT\""
-
     sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT%/*}"
-    #echo "savepathparent 2: \"$sSAVE_PATH_PARENT\""
-
+    # NOTE if sSAVE_PATH_PARENT is null here, there is no parent path
     sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT##*/}"
-    #echo "savepathparent 3: \"$sSAVE_PATH_PARENT\""
 
     # Concatenate the save path, save path parent, basename path,
     # and the optional tag to form the full path and file name to redirect output to
