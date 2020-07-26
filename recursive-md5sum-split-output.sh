@@ -170,24 +170,41 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
     # Get the basename of the parent of the folder the file is in
     sSAVE_PATH_PARENT="${iaFILES[iCOUNTER]%/*}"
+    #echo "savepathparent 1: \"$sSAVE_PATH_PARENT\""
+
     sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT%/*}"
+    #echo "savepathparent 2: \"$sSAVE_PATH_PARENT\""
+
     sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT##*/}"
+    #echo "savepathparent 3: \"$sSAVE_PATH_PARENT\""
 
     # Concatenate the save path, save path parent, basename path,
     # and the optional tag to form the full path and file name to redirect output to
     if [[ -z $sTAG ]]; then
         # If no tag parameter is explicitly defined or it is set to NULL
-        sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
+        if [[ -n $sSAVE_PATH_PARENT ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
+        elif  [[ -z $sSAVE_PATH_PARENT ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sBASENAME_PATH}.md5"
+        fi
     elif [[ -n $sTAG ]]; then
         # If a tag parameter is explicitly defined, prefix the tag with an underscore "_"
-        sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}_${sTAG}.md5"
+        if [[ -n $sSAVE_PATH_PARENT ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}_${sTAG}.md5"
+        elif [[ -z $sSAVE_PATH_PARENT ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sBASENAME_PATH}_${sTAG}.md5"
+        fi
     else
         # If something went wrong with obtaining a tag, default to no TAG
-        sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
+        if [[ -n $sSAVE_PATH_PARENT ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
+        elif [[ -z $sSAVE_PATH_PARENT ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sBASENAME_PATH}.md5"
+        fi
     fi
 
     # Get the output line from md5sum
-    sMD5_OUTPUT_LINE=$(md5sum -b "${iaFILES[iCOUNTER]}")
+    sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
     # NOTE POSIX defines [[:blank:]] as "Space and tab"
