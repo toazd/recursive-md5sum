@@ -40,7 +40,7 @@
 ################################################################################
 
 # Shell options
-shopt -qs extglob
+shopt -qs extglob nullglob
 
 # Initialize global variables
 sSEARCH_PATH=${1-}
@@ -99,6 +99,8 @@ FormatTimeDiff() {
 # This will also fail if the save path does not exist
 [[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit; }
 
+
+
 # Get the full path to search path and save path
 # supports relative paths during invocation
 if cd "$sSEARCH_PATH"; then
@@ -125,20 +127,30 @@ fi
 
 # Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
-# NOTE files are sorted using the entire path and name
+# NOTE files are sorted using their full path and name
+iCOUNTER=0
 if [[ $sFILE_EXT = "**" ]]; then
+    printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for all files"
     iSTART_SECONDS="$(date +%s)"
     while IFS= read -r; do
         iaFILES+=("$REPLY")
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)
+        iCOUNTER=$(( iCOUNTER +1 ))
+        printf "\033[u%s" "...$iCOUNTER"
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -u)
+    printf "\033[u\033[0K\n"
     iEND_SECONDS="$(date +%s)"
 else
+    printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for \"*.${sFILE_EXT}\" files"
     iSTART_SECONDS="$(date +%s)"
     while IFS= read -r; do
         iaFILES+=("$REPLY")
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)
+        iCOUNTER=$(( iCOUNTER +1 ))
+        printf "\033[u%s" "...$iCOUNTER"
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -u)
+    printf "\033[u\033[0K\n"
     iEND_SECONDS="$(date +%s)"
 fi
+#echo "counter: $iCOUNTER"
 
 # Report how many files were found and roughly how long it took to find and sort them
 # NOTE Find returns a newline if nothing is found (no files = length 1 for the array)
@@ -206,8 +218,9 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     fi
 
     # Get the output line from md5sum
+    # Only process files that exist and can be read by the current user
     # NOTE add md5sum parameters here
-    sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
+    [[ -e ${iaFILES[iCOUNTER]} && -r ${iaFILES[iCOUNTER]} ]] && sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
     # NOTE POSIX defines [[:blank:]] as "Space and tab"
@@ -259,7 +272,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # This prevents the same progress from being written multiple times
     # NOTE iPROGRESS and iPREV_PROGRESS must not be equal at initialization
     #      so that 0% is initially displayed for progress <1%
-    [[ $iPROGRESS -ne $iPREV_PROGRESS ]] && printf "%s\033[u" "${iPROGRESS}% complete"
+    [[ $iPROGRESS -ne $iPREV_PROGRESS ]] && printf "\033[u%s" "${iPROGRESS}% complete"
 
     # Update the previous progress variable
     # This variable is required so we don't needlessly update the screen with the same %
@@ -268,4 +281,4 @@ done
 iEND_SECONDS="$(date +%s)"
 
 # Report how many files were processed and how long it took in whole seconds
-printf "\033[2K\r%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
+printf "\r\033[0K%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
