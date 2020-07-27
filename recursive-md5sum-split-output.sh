@@ -3,7 +3,7 @@
 #                                                                              #
 # Toazd 2020 Unlicense                                                         #
 # Read the file UNLICENSE or refer to <https://unlicense.org> for more details #
-# Designed to work on bash versions as low as 3.2 without using gnu coreutils  #
+# Designed to work on bash versions as low as 3.2                              #
 #                                                                              #
 # Purpose:                                                                     #
 #   Given a search path (required), a save path (optional), a file extension   #
@@ -97,11 +97,12 @@ FormatTimeDiff() {
 
 # Check for write permission to the save path
 # This will also fail if the save path does not exist
-[[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit; }
+[[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit 1; }
 
 
 
 # Get the full path to search path and save path
+# without using realpath, dirname, readlink, etc.
 # supports relative paths during invocation
 if cd "$sSEARCH_PATH"; then
     sSEARCH_PATH=$PWD
@@ -109,7 +110,7 @@ if cd "$sSEARCH_PATH"; then
         if cd "$sSAVE_PATH"; then
             sSAVE_PATH=$PWD
             if ! cd "$sWORK_PATH"; then
-                echo "Error returning to script work path: $sWORK_PATH"
+                echo "Error returning to original work path: $sWORK_PATH"
                 exit 1
             fi
         else
@@ -117,7 +118,7 @@ if cd "$sSEARCH_PATH"; then
             exit 1
         fi
     else
-        echo "Error returning to script work path: $sWORK_PATH"
+        echo "Error returning to original work path: $sWORK_PATH"
         exit 1
     fi
 else
