@@ -194,4 +194,4 @@ done
 iEND_SECONDS="$(date +%s)"
 
 # Report how many files were processed and how long it took in whole seconds
-printf "\r\033[0K%s\n%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
+printf "\r\033[0K%s%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
