@@ -105,18 +105,26 @@ fi
 # iaFILES is not required but is used for clarity (if no array is supplied MAPFILE is used)
 # Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
+iCOUNTER=0
 if [[ $sFILE_EXT = "**" ]]; then
+    printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for all files"
     iSTART_SECONDS="$(date +%s)"
     while IFS= read -r; do
         iaFILES+=("$REPLY")
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" | LC_ALL=C sort -u)
+        iCOUNTER=$(( iCOUNTER +1 ))
+        printf "\033[u%s" "...$iCOUNTER"
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
+    printf "\033[u\033[0K\n"
 else
     iSTART_SECONDS="$(date +%s)"
     while IFS= read -r; do
         iaFILES+=("$REPLY")
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" | LC_ALL=C sort -u)
+        iCOUNTER=$(( iCOUNTER +1 ))
+        printf "\033[u%s" "...$iCOUNTER"
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -u)
     iEND_SECONDS="$(date +%s)"
+    printf "\033[u\033[0K\n"
 fi
 
 # Report how many files were found and roughly how long it took to find and sort them
@@ -165,7 +173,7 @@ iSTART_SECONDS="$(date +%s)"
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
     # Run md5sum on the current file in the array and redirect the output to the save file
-    md5sum "${iaFILES[iCOUNTER]}" >> "$sSAVE_FILE"
+    [[ -e ${iaFILES[iCOUNTER]} && -r ${iaFILES[iCOUNTER]} ]] && md5sum "${iaFILES[iCOUNTER]}" >> "$sSAVE_FILE"
 
     # Calculate the progress in whole-number % using no external commands
     # NOTE Calling external commands (like bc) during the main loop is too costly for long operations
@@ -177,7 +185,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # This prevents the same progress from being written multiple times
     # NOTE iPROGRESS and iPREV_PROGRESS must not be equal at initialization
     #      so that 0% is initially displayed for progress <1%
-    [[ $iPROGRESS -ne $iPREV_PROGRESS ]] && printf "%s\033[u" "${iPROGRESS}%"
+    [[ $iPROGRESS -ne $iPREV_PROGRESS ]] && printf "\033[u%s" "${iPROGRESS}%"
 
     # Update the previous progress variable
     # This variable is required so we don't needlessly update the screen with the same %
@@ -186,4 +194,4 @@ done
 iEND_SECONDS="$(date +%s)"
 
 # Report how many files were processed and how long it took in whole seconds
-printf "\033[2K\r%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
+printf "\r\033[0K%s\n%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
