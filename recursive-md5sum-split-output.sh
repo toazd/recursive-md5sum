@@ -40,7 +40,7 @@
 ################################################################################
 
 # Shell options
-shopt -qs extglob nullglob
+shopt -qs extglob
 
 # Initialize global variables
 sSEARCH_PATH=${1-}
@@ -137,8 +137,8 @@ if [[ $sFILE_EXT = "**" ]]; then
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
     done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -u)
-    printf "\033[u\033[0K\n"
     iEND_SECONDS="$(date +%s)"
+    printf "\033[u\033[0K\n"
 else
     printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for \"*.${sFILE_EXT}\" files"
     iSTART_SECONDS="$(date +%s)"
@@ -147,8 +147,8 @@ else
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
     done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -u)
-    printf "\033[u\033[0K\n"
     iEND_SECONDS="$(date +%s)"
+    printf "\033[u\033[0K\n"
 fi
 #echo "counter: $iCOUNTER"
 
