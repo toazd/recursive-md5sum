@@ -9,12 +9,13 @@
 #   Given a search path (required), a save path (optional), a file extension   #
 #   (optional), and a tag (optional) locate all files in the search path and   #
 #   run md5sum on each one and save the results into seperate files. Each      #
-#   output file name is determined by the pattern (relative to the file):      #
-#     parentpathbasename_dirnamebasename.md5                                   #
-#      and if an optional TAG is included:                                     #
-#     parentpathbasename_dirnamebasename_TAG.md5                               #
-#      (command names used for illustration only)                              #
-#   The file names in the output files have their paths stripped               #
+#   output file name is prefixed by the entire path to the file being checked  #
+#   and suffixed by an underscore "_" and then a tag if one is provided. If a  #
+#   tag is not provided than the output file name will be only the path.       #
+#     No tag example output file name:                                         #
+#       home-toazd-github.md5                                                  #
+#     Example output file name with TAG="example"                              #
+#       home-toazd-github_example.md5                                          #
 #                                                                              #
 # Usage notes:                                                                 #
 #                                                                              #
