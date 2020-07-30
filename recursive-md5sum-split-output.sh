@@ -47,9 +47,8 @@ sSEARCH_PATH=${1-}
 sSAVE_PATH=${2:-$PWD}
 sFILE_EXT=${3:-"**"}
 sTAG=${4-""}
-sBASENAME_PATH=""
 sSAVE_FILE=""
-sSAVE_PATH_PARENT=""
+sFILE_PATH=""
 sWORK_PATH=$PWD # in case $OLDPWD isn't supported or set correctly
 sMD5_OUTPUT_LINE=""
 sMD5_OUTPUT_LINE_CHECKSUM=""
@@ -99,8 +98,6 @@ FormatTimeDiff() {
 # This will also fail if the save path does not exist
 [[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit 1; }
 
-
-
 # Get the full path to search path and save path
 # without using realpath, dirname, readlink, etc.
 # supports relative paths during invocation
@@ -126,7 +123,10 @@ else
     exit 1
 fi
 
-# Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
+# Find all specified files in the search path based on the pattern provided
+# then assign the results to an indexed array after sorting them case-insensitive
+# and removing duplicates (dupes shouldn't happen but various scenarios can produce them
+# so it's here just in case. For example, if find -L is the default behavior instead of -P)
 # Each method is timed in whole seconds
 # NOTE files are sorted using their full path and name
 iCOUNTER=0
@@ -137,7 +137,7 @@ if [[ $sFILE_EXT = "**" ]]; then
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -u)
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -fu)
     iEND_SECONDS="$(date +%s)"
     printf "\033[u\033[0K\n"
 else
@@ -147,11 +147,10 @@ else
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -u)
+    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -fu)
     iEND_SECONDS="$(date +%s)"
     printf "\033[u\033[0K\n"
 fi
-#echo "counter: $iCOUNTER"
 
 # Report how many files were found and roughly how long it took to find and sort them
 # NOTE Find returns a newline if nothing is found (no files = length 1 for the array)
@@ -172,49 +171,53 @@ else
     exit 1
 fi
 
-# Process each file defined as an element in the iaFILES array with md5sum,
-# redirecting the output to a file in the save path named parentpath_path_TAG.md5
-# (relative to the file), and then report the progress to stdout
-# NOTE save and restore cursor position escape sequences are used (not all terminals
-# support this feature and if lacking support the output will be mangled)
+# Process each file defined as an element in the iaFILES array with md5sum
+# NOTE save and restore cursor position escape sequences (\033[s and \033[u) are used
+# very old and non-standard terminals will not display the progress as intended
 printf "%s\033[s" "Processing files with md5sum..."
 iSTART_SECONDS="$(date +%s)"
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
-    # Get the basename of the parent folder of the file
-    sBASENAME_PATH="${iaFILES[iCOUNTER]%/*}"
-    sBASENAME_PATH="${sBASENAME_PATH##*/}"
+    # Use the entire file path to create the output file prefix
+    sFILE_PATH=${iaFILES[iCOUNTER]}
+    # Trim the file name away
+    sFILE_PATH=${sFILE_PATH%/*}
+    # Convert forward-slashes "/" to dashes "-"
+    sFILE_PATH=${sFILE_PATH//\//-}
 
-    # Get the basename of the parent of the folder the file is in
-    sSAVE_PATH_PARENT="${iaFILES[iCOUNTER]%/*}"
-    sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT%/*}"
-    # NOTE if sSAVE_PATH_PARENT is null here, there is no parent path
-    sSAVE_PATH_PARENT="${sSAVE_PATH_PARENT##*/}"
+    # If the first two characters are double dashes "--", then the root path "/" was used as a search path
+    if [[ ${sFILE_PATH:0:2} = "--" ]]; then
+        sFILE_PATH=${sFILE_PATH:2:${#sFILE_PATH}}
+    elif [[ ${sFILE_PATH:0:1} = "-" ]]; then
+        sFILE_PATH=${sFILE_PATH:1:${#sFILE_PATH}}
+    fi
 
-    # Concatenate the save path, save path parent, basename path,
-    # and the optional tag to form the full path and file name to redirect output to
-    # If sSAVE_PATH_PARENT is not NULL include it with an underscore "_" as a seperator
-    # If sSAVE_PATH_PARENT is NULL it doesn't exist, so don't include it or a leading underscore "_"
+    # Create the full path and file name for the output file
+    # using the save path and the file path and including
+    # a tag if one was provided
+    # If no tag parameter is explicitly defined or it is set to NULL
     if [[ -z $sTAG ]]; then
-        # If no tag parameter is explicitly defined or it is set to NULL
-        if [[ -n $sSAVE_PATH_PARENT ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
-        elif  [[ -z $sSAVE_PATH_PARENT ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sBASENAME_PATH}.md5"
+        if [[ -n $sFILE_PATH ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}.md5"
+        else
+            printf "\n%s\n%s\n%s\n%s\n" "Error transforming file path into output file prefix" "File: \"${iaFILES[iCOUNTER]}\"" "Save path: \"$sSAVE_PATH\"" "Computed prefix: \"$sFILE_PATH\""
+            exit 1
         fi
+    # If a tag parameter is explicitly defined, prefix the tag with an underscore "_"
     elif [[ -n $sTAG ]]; then
-        # If a tag parameter is explicitly defined, prefix the tag with an underscore "_"
-        if [[ -n $sSAVE_PATH_PARENT ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}_${sTAG}.md5"
-        elif [[ -z $sSAVE_PATH_PARENT ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sBASENAME_PATH}_${sTAG}.md5"
+        if [[ -n $sFILE_PATH ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}_${sTAG}.md5"
+        else
+            printf "\n%s\n%s\n%s\n%s\n%sn" "Error transforming file path into output file prefix" "File: \"${iaFILES[iCOUNTER]}\"" "Save path: \"$sSAVE_PATH\"" "Tag: $sTAG" "Computed prefix: \"$sFILE_PATH\""
+            exit 1
         fi
+    # If something went wrong with obtaining a tag, default to no TAG
     else
-        # If something went wrong with obtaining a tag, default to no TAG
-        if [[ -n $sSAVE_PATH_PARENT ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sSAVE_PATH_PARENT}_${sBASENAME_PATH}.md5"
-        elif [[ -z $sSAVE_PATH_PARENT ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sBASENAME_PATH}.md5"
+        if [[ -n $sFILE_PATH ]]; then
+            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}.md5"
+        else
+            printf "\n%s\n%s\n%s\n%s\n" "Error transforming file path into output file prefix" "File: \"${iaFILES[iCOUNTER]}\"" "Save path: \"$sSAVE_PATH\"" "Computed prefix: \"$sFILE_PATH\""
+            exit 1
         fi
     fi
 
@@ -224,11 +227,10 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     [[ -e ${iaFILES[iCOUNTER]} && -r ${iaFILES[iCOUNTER]} ]] && sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
-    # NOTE POSIX defines [[:blank:]] as "Space and tab"
-    sMD5_OUTPUT_LINE_CHECKSUM="${sMD5_OUTPUT_LINE%%[[:blank:]]*}"
+    sMD5_OUTPUT_LINE_CHECKSUM="${sMD5_OUTPUT_LINE%% *}"
 
     # Get the full path and/or file name from the output line
-    sMD5_OUTPUT_LINE_FILE="${sMD5_OUTPUT_LINE#*[[:blank:]]}"
+    sMD5_OUTPUT_LINE_FILE="${sMD5_OUTPUT_LINE#* }"
 
     # Determine if md5sum was ran in text or binary mode (determines the output format)
     # by checking for a leading asterisk "*" (binary mode) or space " " (text mode)
@@ -242,7 +244,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
         # Remove the leading space " "
         sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE_FILE:2:${#sMD5_OUTPUT_LINE_FILE}}
     else
-        echo "Error checking md5sum output line file name for a mode character (* or " ")"
+        echo "Error checking md5sum output line file name for a mode character (asterisk \"*\" for binary mode, space \" \" for text mode)"
         echo "Output line: \"$sMD5_OUTPUT_LINE_FILE\""
     fi
 
