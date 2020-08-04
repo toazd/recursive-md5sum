@@ -73,7 +73,7 @@ FormatTimeDiff() {
 
 # Get the full path to search path and save path
 # without using realpath, dirname, readlink, etc.
-# supports relative paths during invocation
+# NOTE supports relative paths at invocation
 if cd "$sSEARCH_PATH"; then
     sSEARCH_PATH=$PWD
     if cd "$sWORK_PATH"; then
@@ -97,7 +97,7 @@ else
 fi
 
 # Check for write permission to the save path
-# This will also fail if the save path does not exist
+# NOTE This will also fail if the save path does not exist
 [[ -w $sSAVE_PATH ]] || { echo "No write access to save path or save path does not exist: \"$sSAVE_PATH\""; exit 1; }
 
 # Find all files in the search path and assign the results to an indexed array after sorting them
@@ -105,32 +105,33 @@ fi
 # iaFILES is not required but is used for clarity (if no array is supplied MAPFILE is used)
 # Find all specified files in the search path and based on the pattern provided then assign the results to an indexed array after sorting them
 # Each method is timed in whole seconds
+# NOTE "printf '%(%s)T\n' -1" requires bash 4.2
+# NOTE $EPOCHSECONDS / $EPOCHREALTIME requires bash 5.0
 iCOUNTER=0
 if [[ $sFILE_EXT = "**" ]]; then
     printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for all files"
-    iSTART_SECONDS="$(date +%s)"
+    iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -u)
-    iEND_SECONDS="$(date +%s)"
+    done < <(find "${sSEARCH_PATH}/" -type f -iname "*" 2>/dev/null | LC_ALL=C sort -f)
+    iEND_SECONDS=$(date +%s)
     printf "\033[u\033[0K\n"
 else
-    iSTART_SECONDS="$(date +%s)"
+    iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -u)
-    iEND_SECONDS="$(date +%s)"
+    done < <(find "${sSEARCH_PATH}/" -type f -iname "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -f)
+    iEND_SECONDS=$(date +%s)
     printf "\033[u\033[0K\n"
 fi
 
 # Report how many files were found and roughly how long it took to find and sort them
 # NOTE Find returns a newline if nothing is found
 # If the array has length 0 then it hasn't been modified from initialization
-# (shouldn't happen but if set -e is removed or disabled and find fails somehow, it can happen)
 if [[ ${#iaFILES[@]} -le 1 ]]; then
     echo "No files found matching that search pattern"
     exit 0
@@ -154,11 +155,11 @@ fi
 # Start with the full path of the search path
 sSAVE_FILE=$sSEARCH_PATH
 # Replace / with -
-sSAVE_FILE="${sSAVE_FILE//\//-}"
+sSAVE_FILE=${sSAVE_FILE//\//-}
 # Remove a leading dash "-" if it exists
-[[ ${sSAVE_FILE:0:1} = "-" ]] && sSAVE_FILE="${sSAVE_FILE:1:${#sSAVE_FILE}}"
+[[ ${sSAVE_FILE:0:1} = "-" ]] && sSAVE_FILE=${sSAVE_FILE:1:${#sSAVE_FILE}}
 # Prefix the file name with the path
-sSAVE_FILE="${sSAVE_PATH}/${sSAVE_FILE}.md5"
+sSAVE_FILE="${sSAVE_PATH}/${sSAVE_FILE}".md5
 
 # Report the name of the output file
 echo "Output file: $sSAVE_FILE"
@@ -169,18 +170,17 @@ echo "Output file: $sSAVE_FILE"
 
 # Process each file defined as an element in the iaFILES array
 printf "%s\033[s" "Processing files with md5sum..."
-iSTART_SECONDS="$(date +%s)"
+iSTART_SECONDS=$(date +%s)
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
     # Run md5sum on the current file in the array and redirect the output to the save file
     [[ -e ${iaFILES[iCOUNTER]} && -r ${iaFILES[iCOUNTER]} ]] && md5sum "${iaFILES[iCOUNTER]}" >> "$sSAVE_FILE"
 
-    # Calculate the progress in whole-number % using no external commands
-    # NOTE Calling external commands (like bc) during the main loop is too costly for long operations
+    # Calculate the progress in whole-number %
     iPROGRESS=$(( (iCOUNTER*100) / iTOTAL_FILES ))
 
-    # Report the progress in whole-number % using carriage return to overwrite
-    # the same line on subsequent updates. Only output if the current progress
+    # Report the progress in whole-number %
+    # Only output if the current progress
     # is not equal to the previous progress.
     # This prevents the same progress from being written multiple times
     # NOTE iPROGRESS and iPREV_PROGRESS must not be equal at initialization
@@ -191,7 +191,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # This variable is required so we don't needlessly update the screen with the same %
     iPREV_PROGRESS=$iPROGRESS
 done
-iEND_SECONDS="$(date +%s)"
+iEND_SECONDS=$(date +%s)
 
 # Report how many files were processed and how long it took in whole seconds
-printf "\r\033[0K%s%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
+printf "\r\033[0K%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"

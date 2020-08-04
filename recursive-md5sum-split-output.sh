@@ -5,6 +5,11 @@
 # Read the file UNLICENSE or refer to <https://unlicense.org> for more details #
 # Designed to work on bash versions as low as 3.2                              #
 #                                                                              #
+# NOTE:                                                                        #
+#   This version is customized specifically for the requirements discussed in  #
+#   the following reddit thread:                                               #
+#   /r/bash/comments/hi9wwn/macdebian_creating_bash_script_to_get_md5_values   #
+#                                                                              #
 # Purpose:                                                                     #
 #   Given a search path (required), a save path (optional), a file extension   #
 #   (optional), and a tag (optional) locate all files in the search path and   #
@@ -47,7 +52,7 @@ shopt -qs extglob
 sSEARCH_PATH=${1-}
 sSAVE_PATH=${2:-$PWD}
 sFILE_EXT=${3:-"**"}
-sTAG=${4-""}
+sTAG=${4-}
 sSAVE_FILE=""
 sFILE_PATH=""
 sWORK_PATH=$PWD # in case $OLDPWD isn't supported or set correctly
@@ -101,7 +106,7 @@ FormatTimeDiff() {
 
 # Get the full path to search path and save path
 # without using realpath, dirname, readlink, etc.
-# supports relative paths during invocation
+# NOTE supports relative paths at invocation
 if cd "$sSEARCH_PATH"; then
     sSEARCH_PATH=$PWD
     if cd "$sWORK_PATH"; then
@@ -126,30 +131,28 @@ fi
 
 # Find all specified files in the search path based on the pattern provided
 # then assign the results to an indexed array after sorting them case-insensitive
-# and removing duplicates (dupes shouldn't happen but various scenarios can produce them
-# so it's here just in case. For example, if find -L is the default behavior instead of -P)
-# Each method is timed in whole seconds
-# NOTE files are sorted using their full path and name
+# NOTE "printf '%(%s)T\n' -1" requires bash 4.2
+# NOTE $EPOCHSECONDS / $EPOCHREALTIME requires bash 5.0
 iCOUNTER=0
 if [[ $sFILE_EXT = "**" ]]; then
     printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for all files"
-    iSTART_SECONDS="$(date +%s)"
+    iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*" 2>/dev/null | LC_ALL=C sort -fu)
-    iEND_SECONDS="$(date +%s)"
+    done < <(find "${sSEARCH_PATH}/" -type f -iname "*" 2>/dev/null | LC_ALL=C sort -f)
+    iEND_SECONDS=$(date +%s)
     printf "\033[u\033[0K\n"
 else
     printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for \"*.${sFILE_EXT}\" files"
-    iSTART_SECONDS="$(date +%s)"
+    iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iwholename "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -fu)
-    iEND_SECONDS="$(date +%s)"
+    done < <(find "${sSEARCH_PATH}/" -type f -iname "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -f)
+    iEND_SECONDS=$(date +%s)
     printf "\033[u\033[0K\n"
 fi
 
@@ -176,7 +179,7 @@ fi
 # NOTE save and restore cursor position escape sequences (\033[s and \033[u) are used
 # very old and non-standard terminals will not display the progress as intended
 printf "%s\033[s" "Processing files with md5sum..."
-iSTART_SECONDS="$(date +%s)"
+iSTART_SECONDS=$(date +%s)
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
     # Use the entire file path to create the output file prefix
@@ -186,7 +189,9 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # Convert forward-slashes "/" to dashes "-"
     sFILE_PATH=${sFILE_PATH//\//-}
 
-    # If the first two characters are double dashes "--", then the root path "/" was used as a search path
+    # Remove leading "--" or "-"
+    # NOTE If the first two characters are double dashes "--"
+    # then the root path "/" was used as a search path
     if [[ ${sFILE_PATH:0:2} = "--" ]]; then
         sFILE_PATH=${sFILE_PATH:2:${#sFILE_PATH}}
     elif [[ ${sFILE_PATH:0:1} = "-" ]]; then
@@ -199,7 +204,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # If no tag parameter is explicitly defined or it is set to NULL
     if [[ -z $sTAG ]]; then
         if [[ -n $sFILE_PATH ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}.md5"
+            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}".md5
         else
             printf "\n%s\n%s\n%s\n%s\n" "Error transforming file path into output file prefix" "File: \"${iaFILES[iCOUNTER]}\"" "Save path: \"$sSAVE_PATH\"" "Computed prefix: \"$sFILE_PATH\""
             exit 1
@@ -207,7 +212,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # If a tag parameter is explicitly defined, prefix the tag with an underscore "_"
     elif [[ -n $sTAG ]]; then
         if [[ -n $sFILE_PATH ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}_${sTAG}.md5"
+            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}_${sTAG}".md5
         else
             printf "\n%s\n%s\n%s\n%s\n%sn" "Error transforming file path into output file prefix" "File: \"${iaFILES[iCOUNTER]}\"" "Save path: \"$sSAVE_PATH\"" "Tag: $sTAG" "Computed prefix: \"$sFILE_PATH\""
             exit 1
@@ -215,7 +220,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # If something went wrong with obtaining a tag, default to no TAG
     else
         if [[ -n $sFILE_PATH ]]; then
-            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}.md5"
+            sSAVE_FILE="${sSAVE_PATH}/${sFILE_PATH}".md5
         else
             printf "\n%s\n%s\n%s\n%s\n" "Error transforming file path into output file prefix" "File: \"${iaFILES[iCOUNTER]}\"" "Save path: \"$sSAVE_PATH\"" "Computed prefix: \"$sFILE_PATH\""
             exit 1
@@ -223,15 +228,15 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     fi
 
     # Get the output line from md5sum
-    # Only process files that exist and can be read by the current user
-    # NOTE add md5sum parameters here
-    [[ -e ${iaFILES[iCOUNTER]} && -r ${iaFILES[iCOUNTER]} ]] && sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
+    # Only process files that can be read by the current user
+    # NOTE add any desired md5sum parameters here
+    [[ -r ${iaFILES[iCOUNTER]} ]] && sMD5_OUTPUT_LINE=$(md5sum "${iaFILES[iCOUNTER]}")
 
     # Get the checksum portion of the output line
-    sMD5_OUTPUT_LINE_CHECKSUM="${sMD5_OUTPUT_LINE%% *}"
+    sMD5_OUTPUT_LINE_CHECKSUM=${sMD5_OUTPUT_LINE%% *}
 
     # Get the full path and/or file name from the output line
-    sMD5_OUTPUT_LINE_FILE="${sMD5_OUTPUT_LINE#* }"
+    sMD5_OUTPUT_LINE_FILE=${sMD5_OUTPUT_LINE#* }
 
     # Determine if md5sum was ran in text or binary mode (determines the output format)
     # by checking for a leading asterisk "*" (binary mode) or space " " (text mode)
@@ -266,12 +271,11 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # Save the output line to the save file
     printf "%s\n" "$sMD5_OUTPUT_LINE" >> "$sSAVE_FILE"
 
-    # Calculate the progress in whole-number % using no external commands
-    # NOTE Calling external commands (like bc) during the main loop is too costly for long operations
+    # Calculate the progress in whole-number %
     iPROGRESS=$(( (iCOUNTER*100) / iTOTAL_FILES ))
 
-    # Report the progress in whole-number % using carriage return to overwrite
-    # the same line on subsequent updates. Only output if the current progress
+    # Report the progress in whole-number %
+    # Only output if the current progress
     # is not equal to the previous progress.
     # This prevents the same progress from being written multiple times
     # NOTE iPROGRESS and iPREV_PROGRESS must not be equal at initialization
@@ -282,7 +286,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # This variable is required so we don't needlessly update the screen with the same %
     iPREV_PROGRESS=$iPROGRESS
 done
-iEND_SECONDS="$(date +%s)"
+iEND_SECONDS=$(date +%s)
 
 # Report how many files were processed and how long it took in whole seconds
 printf "\r\033[0K%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
