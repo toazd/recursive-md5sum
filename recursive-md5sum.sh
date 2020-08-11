@@ -115,7 +115,7 @@ if [[ $sFILE_EXT = "**" ]]; then
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
         printf "\033[u%s" "...$iCOUNTER"
-    done < <(find "${sSEARCH_PATH}/" -type f -iname "*" 2>/dev/null | LC_ALL=C sort -f)
+    done < <(find "${sSEARCH_PATH}/" -type f 2>/dev/null | LC_ALL=C sort -f)
     iEND_SECONDS=$(date +%s)
     printf "\033[u\033[0K\n"
 else
