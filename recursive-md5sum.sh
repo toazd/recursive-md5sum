@@ -47,7 +47,7 @@ iPREV_PROGRESS=1
 
 # Basic usage
 ShowUsage() {
-    printf "\nUsage:\n\t%s\n\n\t%s\n\n" "$0 [search_path] [save_path] [file_extension]" "file_extension \"**\" = all files (instead of *.file_extension)"
+    printf '\nUsage:\n\t%s\n\n\t%s\n\n' "$0 [search_path] [save_path] [file_extension]" "file_extension \"**\" = all files (instead of *.file_extension)"
     exit
 }
 
@@ -109,24 +109,25 @@ fi
 # NOTE $EPOCHSECONDS / $EPOCHREALTIME requires bash 5.0
 iCOUNTER=0
 if [[ $sFILE_EXT = "**" ]]; then
-    printf "%s\033[s" "Searching \"$sSEARCH_PATH\" for all files"
+    printf '%s\033[s' "Searching \"$sSEARCH_PATH\" for all files"
     iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
-        printf "\033[u%s" "...$iCOUNTER"
+        printf '\033[u\033[s%s' "...$iCOUNTER"
     done < <(find "${sSEARCH_PATH}/" -type f 2>/dev/null | LC_ALL=C sort -f)
     iEND_SECONDS=$(date +%s)
-    printf "\033[u\033[0K\n"
+    printf '\033[u\033[0K\n'
 else
+    printf '%s\033[s' "Searching \"$sSEARCH_PATH\" for *.$sFILE_EXT"
     iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
         iCOUNTER=$(( iCOUNTER +1 ))
-        printf "\033[u%s" "...$iCOUNTER"
+        printf '\033[u\033[s%s' "...$iCOUNTER"
     done < <(find "${sSEARCH_PATH}/" -type f -iname "*.${sFILE_EXT}" 2>/dev/null | LC_ALL=C sort -f)
     iEND_SECONDS=$(date +%s)
-    printf "\033[u\033[0K\n"
+    printf '\033[u\033[0K\n'
 fi
 
 # Report how many files were found and roughly how long it took to find and sort them
@@ -169,7 +170,7 @@ echo "Output file: $sSAVE_FILE"
 [[ -f $sSAVE_FILE ]] && { echo "Existing output file detected..."; mv -fv "$sSAVE_FILE" "${sSAVE_FILE%.*}_$(date +%s).bak"; }
 
 # Process each file defined as an element in the iaFILES array
-printf "%s\033[s" "Processing files with md5sum..."
+printf '%s\033[s' "Processing files with md5sum..."
 iSTART_SECONDS=$(date +%s)
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
@@ -185,7 +186,7 @@ for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
     # This prevents the same progress from being written multiple times
     # NOTE iPROGRESS and iPREV_PROGRESS must not be equal at initialization
     #      so that 0% is initially displayed for progress <1%
-    [[ $iPROGRESS -ne $iPREV_PROGRESS ]] && printf "\033[u%s" "${iPROGRESS}%"
+    [[ $iPROGRESS -ne $iPREV_PROGRESS ]] && printf '\033[u\033[s%s' "${iPROGRESS}%"
 
     # Update the previous progress variable
     # This variable is required so we don't needlessly update the screen with the same %
@@ -194,4 +195,4 @@ done
 iEND_SECONDS=$(date +%s)
 
 # Report how many files were processed and how long it took in whole seconds
-printf "\r\033[0K%s\n" "$iCOUNTER files processed in $(FormatTimeDiff)"
+printf '\r\033[0K%s\n' "$iCOUNTER files processed in $(FormatTimeDiff)"
