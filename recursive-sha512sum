@@ -169,7 +169,7 @@ echo "Output file: $sSAVE_FILE"
 [[ -f $sSAVE_FILE ]] && { echo "Existing output file detected..."; mv -fv "$sSAVE_FILE" "${sSAVE_FILE%.*}_$(date +%s).bak"; }
 
 # Process each file defined as an element in the iaFILES array
-printf "%s\033[s" "Processing files with md5sum..."
+printf "%s\033[s" "Processing files with sha512sum..."
 iSTART_SECONDS=$(date +%s)
 for (( iCOUNTER=0; iCOUNTER<${#iaFILES[@]}; iCOUNTER++ )); do
 
