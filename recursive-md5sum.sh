@@ -74,12 +74,12 @@ FormatTimeDiff() {
 # Get the full path to search path and save path
 # without using realpath, dirname, readlink, etc.
 # NOTE supports relative paths at invocation
-if cd "$sSEARCH_PATH"; then
+if cd -- "$sSEARCH_PATH"; then
     sSEARCH_PATH=$PWD
-    if cd "$sWORK_PATH"; then
-        if cd "$sSAVE_PATH"; then
+    if cd -- "$sWORK_PATH"; then
+        if cd -- "$sSAVE_PATH"; then
             sSAVE_PATH=$PWD
-            if ! cd "$sWORK_PATH"; then
+            if ! cd -- "$sWORK_PATH"; then
                 echo "Error returning to original work path: $sWORK_PATH"
                 exit 1
             fi
@@ -119,7 +119,7 @@ if [[ $sFILE_EXT = "**" ]]; then
     iEND_SECONDS=$(date +%s)
     printf '\033[u\033[0K\n'
 else
-    printf '%s\033[s' "Searching \"$sSEARCH_PATH\" for *.$sFILE_EXT"
+    printf '%s\033[s' "Searching \"$sSEARCH_PATH\" for *.${sFILE_EXT}"
     iSTART_SECONDS=$(date +%s)
     while IFS= read -r; do
         iaFILES+=("$REPLY")
